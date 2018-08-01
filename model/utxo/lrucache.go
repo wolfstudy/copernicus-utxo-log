@@ -17,6 +17,10 @@ type CoinsLruCache struct {
 	dirtyCoins map[outpoint.OutPoint]*Coin //write database temporary cache
 }
 
+func (coinsCache *CoinsLruCache) GetCoinsDB() CoinsDB {
+	return coinsCache.db
+}
+
 func InitUtxoLruTip(uc *UtxoConfig) {
 	db := newCoinsDB(uc.Do)
 	utxoTip = newCoinsLruCache(*db)

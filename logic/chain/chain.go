@@ -3,9 +3,12 @@ package chain
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/copernet/copernicus/conf"
 	"github.com/copernet/copernicus/errcode"
 	lmp "github.com/copernet/copernicus/logic/mempool"
 	"github.com/copernet/copernicus/model/block"
@@ -236,6 +239,7 @@ func ConnectTip(pIndexNew *blockindex.BlockIndex,
 	if !flushed {
 		panic("here should be true when view flush state")
 	}
+
 	nTime4 := util.GetMicrosTime()
 	gPersist.GlobalTimeFlush += nTime4 - nTime3
 	log.Print("bench", "debug", " - Flush: %.2fms [%.2fs]\n",
@@ -244,6 +248,22 @@ func ConnectTip(pIndexNew *blockindex.BlockIndex,
 	if err := disk.FlushStateToDisk(disk.FlushStateAlways, 0); err != nil {
 		return err
 	}
+	var stat stat
+	if err := GetUTXOStats(utxo.GetUtxoCacheInstance().(*utxo.CoinsLruCache).GetCoinsDB(), &stat); err != nil {
+		log.Print("test", "debug", "GetUTXOStats() failed with : %s", err)
+		return err
+	}
+	f, err := os.OpenFile(filepath.Join(conf.GetDataPath(), "utxo.log"), os.O_APPEND|os.O_RDWR|os.O_CREATE, 0640)
+	if err != nil {
+		log.Print("test", "debug", "os.OpenFile() failed with : %s", err)
+		return err
+	}
+	defer f.Close()
+	if _, err := f.WriteString(stat.String()); err != nil {
+		log.Print("test", "debug", "f.WriteString() failed with : %s", err)
+		return err
+	}
+
 	nTime5 := util.GetMicrosTime()
 	gPersist.GlobalTimeChainState += nTime5 - nTime4
 	log.Print("bench", "debug", " - Writing chainstate: %.2fms [%.2fs]\n",
@@ -503,6 +523,7 @@ func InitGenesisChain() error {
 	err = disk.FlushStateToDisk(disk.FlushStateAlways, 0)
 
 	fmt.Printf("initGenesisChain=====%v,error:%v", gChain, err)
+
 	return nil
 
 }
